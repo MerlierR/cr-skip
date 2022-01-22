@@ -1,0 +1,18 @@
+{
+  "manifest_version": 2,
+  "name": "CR Skip",
+  "version": "0.0.0",
+  "description": "Add skip buttons to crunchyroll beta",
+  "content_scripts": [
+    {
+      "matches": ["https://beta.crunchyroll.com/*"],
+      "js": ["main.js"],
+      "all_frames": true
+    },
+    {
+      "matches": ["https://static.crunchyroll.com/*"],
+      "js": ["player.js"],
+      "all_frames": true
+    }
+  ]
+}
