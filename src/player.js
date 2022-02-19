@@ -43,6 +43,7 @@ const /**CSSStyleDeclaration*/ BUTTON_STYLE = `
   padding: 10px;
   margin: 0 20px 0 0;
   font-size: 1.5rem;
+  line-height: 1.3rem;
   cursor: pointer;
 `
 
@@ -55,27 +56,49 @@ const calculateTime = (timeString) => {
 }
 
 class CommentAttributes {
-  time
-  timeString
-  type
-
-  skipOthers
-  showMe
-  skipText
+  /**@type string*/ comment
+  /**@type number*/ time
+  /**@type string*/ timeString
+  /**@type CommentAttributesType*/ type
 
   constructor(
+    comment,
     time,
     timeString,
     type
   ) {
+    this.comment = comment
     this.time = time
     this.timeString = timeString
     this.type = type
+  }
 
-    this.skipOthers = type !== 'generic'
-    this.showMe = this.skipOthers
+  get skipOthers() {
+    return this.type !== 'generic'
+  }
 
-    this.skipText = this.#getSkipText()
+  get showMe() {
+    return this.skipOthers
+  }
+
+  get skipText() {
+    switch (this.type) {
+      case 'titlecard':
+        return `Skip to title`
+      case 'recap':
+        return `Skip recap`
+      default:
+        return `Skip to ${this.timeString}`
+    }
+  }
+
+  get skipInfo() {
+    switch (this.type) {
+      case 'generic':
+        return this.comment.substr(0, 25)
+      default:
+        return `Skip to ${this.timeString}`
+    }
   }
 
   /**
@@ -111,25 +134,14 @@ class CommentAttributes {
       })
 
       return [
-        new CommentAttributes(split.recapTime, split.recapTimeString, 'recap'),
-        new CommentAttributes(split.titlecardTime, split.titlecardTimeString, 'titlecard'),
+        new CommentAttributes(comment, split.recapTime, split.recapTimeString, 'recap'),
+        new CommentAttributes(comment, split.titlecardTime, split.titlecardTimeString, 'titlecard'),
       ]
     } else {
       const type = recap != null ? 'recap' : titlecard != null ? 'titlecard' : 'generic'
       return [
-        new CommentAttributes(time, timeString, type)
+        new CommentAttributes(comment, time, timeString, type)
       ]
-    }
-  }
-
-  #getSkipText() {
-    switch (this.type) {
-      case 'titlecard':
-        return `Skip to title (${this.timeString})`
-      case 'recap':
-        return `Skip recap (${this.timeString})`
-      default:
-        return `Skip to ${this.timeString}`
     }
   }
 }
@@ -163,6 +175,12 @@ window.addEventListener('load', async () => {
       $container.appendChild($buttonContainer)
       data
         .flatMap(({time, timeString, comment}) => CommentAttributes.create(comment, time, timeString))
+        .filter(({time}, index, self) =>
+          self.findIndex(it =>
+            it.time >= time - TIME_DELTA &&
+            it.time <= time + TIME_DELTA
+          ) === index
+        )
         .filter(({showMe}, _, self) => {
           if (TRY_SKIP_GENERIC && self.some(({skipOthers}) => skipOthers)) {
             return showMe === true
@@ -171,15 +189,13 @@ window.addEventListener('load', async () => {
           return true
         })
         .sort((a, b) => a.time - b.time)
-        .filter(({time}, index, self) =>
-          self.findIndex(it =>
-            it.time >= time - TIME_DELTA &&
-            it.time <= time + TIME_DELTA
-          ) === index
-        )
-        .forEach(({skipText, time}) => {
+        .forEach(({skipText, skipInfo, time}) => {
           const $button = document.createElement('button')
-          $button.innerHTML = skipText
+          $button.innerHTML = [
+            `<p style="margin:0;">${skipText}</p>`,
+            `<small style="color:rgba(255,255,255,0.9);font-size:.75rem;">${skipInfo}</small>`
+          ].join('')
+
           $button.style = BUTTON_STYLE
 
           $button.onclick = () => {
