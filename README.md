@@ -1,3 +1,5 @@
+**_archived as CR has (partially) implemented this natively_**
+
 # What?
 
 Chrome extension to add skip buttons to the crunchyroll beta site.
